@@ -1,4 +1,4 @@
 google.com
+yandex.ru
 github.com
-youtube.com
-invalid-site-12345.com
+https://httpbin.org
