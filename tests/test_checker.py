@@ -40,78 +40,106 @@ class TestChecker:
         mock_exit.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_check_site_ok_live(self):
-        async with aiohttp.ClientSession() as session:
-            result = await check_site("https://httpbin.org/status/200", session)
-            assert result['status'] == 'OK'
-
-    @pytest.mark.asyncio
-    async def test_check_site_error_live(self):
-        async with aiohttp.ClientSession() as session:
-            result = await check_site("https://httpbin.org/status/404", session)
-            assert result['status'] == 'ERROR'
-
-    @pytest.mark.asyncio
-    @patch('app.checker.time')
-    async def test_check_site_ok_mock(self, mock_time):
-        mock_time.time.side_effect = [1000.0, 1000.1]
-
-        mock_session_get = AsyncMock()
-        mock_response = AsyncMock()
+    async def test_check_site_200_ok(self):
+        mock_cm_get = AsyncMock()
+        mock_response = Mock()
         mock_response.status = 200
-        mock_session_get.__aenter__.return_value = mock_response
-        mock_session_get.__aexit__.return_value = True
+        mock_cm_get.__aenter__.return_value = mock_response
+        mock_cm_get.__aexit__.return_value = False
 
-        with patch('app.checker.aiohttp.ClientSession') as mock_session_class:
-            mock_session = mock_session_class.return_value
-            mock_session.get.return_value = mock_session_get
+        mock_session = Mock()
+        mock_session.get.return_value = mock_cm_get
 
-            result = await check_site("https://test.com", mock_session)
+        result = await check_site("https://test.com", mock_session)
 
         assert result['status'] == 'OK'
         assert result['code'] == 200
+        assert 'time' in result
+        mock_session.get.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch('app.checker.time')
-    async def test_check_site_timeout_mock(self, mock_time):
-        mock_time.time.side_effect = [1000.0, 1005.0]
+    async def test_check_site_500_error(self):
+        mock_cm_get = AsyncMock()
+        mock_response = Mock()
+        mock_response.status = 500
+        mock_cm_get.__aenter__.return_value = mock_response
+        mock_cm_get.__aexit__.return_value = False
 
-        with patch('aiohttp.ClientSession.get', side_effect=asyncio.TimeoutError):
-            async with aiohttp.ClientSession() as session:
-                result = await check_site("https://test.com", session)
+        mock_session = Mock()
+        mock_session.get.return_value = mock_cm_get
+
+        result = await check_site("https://test.com", mock_session)
+
+        assert result['status'] == 'ERROR'
+        assert result['code'] == 500
+
+    @pytest.mark.asyncio
+    async def test_check_site_timeout(self):
+        mock_session = Mock()
+        mock_session.get.side_effect = asyncio.TimeoutError()
+
+        result = await check_site("https://test.com", mock_session)
 
         assert result['status'] == 'TIMEOUT'
+        assert result['code'] == 0
 
     @pytest.mark.asyncio
-    @patch('app.checker.time')
-    async def test_check_site_fail_mock(self, mock_time):
-        mock_time.time.side_effect = [1000.0, 1000.05]
+    async def test_check_site_fail_exception(self):
+        mock_session = Mock()
+        mock_session.get.side_effect = ConnectionError("boom")
 
-        with patch('aiohttp.ClientSession.get', side_effect=ConnectionError):
-            async with aiohttp.ClientSession() as session:
-                result = await check_site("https://test.com", session)
+        result = await check_site("https://test.com", mock_session)
 
         assert result['status'] == 'FAIL'
+        assert result['code'] == 0
+        assert 'boom' in result['error']
 
     @pytest.mark.asyncio
-    @patch('app.checker.check_site')
-    async def test_one_time_check(self, mock_check_site):
-        sample_sites = ['site1.com', 'site2.com']
+    async def test_check_site_timeout_value_is_used(self):
+        custom_timeout = 12.5
+        mock_cm_get = AsyncMock()
+        mock_response = Mock()
+        mock_response.status = 200
+        mock_cm_get.__aenter__.return_value = mock_response
+        mock_cm_get.__aexit__.return_value = False
+
+        mock_session = Mock()
+        mock_session.get.return_value = mock_cm_get
+
+        await check_site("https://test.com", mock_session, timeout=custom_timeout)
+
+        call_kwargs = mock_session.get.call_args
+        assert call_kwargs is not None
+        timeout_arg = call_kwargs.kwargs.get('timeout')
+        assert timeout_arg is not None
+        assert timeout_arg.total == custom_timeout
+
+    @pytest.mark.asyncio
+    @patch('app.monitoring.checker.check_site')
+    async def test_one_time_check_passes_timeout(self, mock_check_site):
+        sample_sites = ['https://site1.com', 'https://site2.com']
+        custom_timeout = 7.5
         mock_check_site.side_effect = [
-            {'status': 'OK'}, {'status': 'ERROR'}
+            {'status': 'OK', 'time': 100.0, 'code': 200},
+            {'status': 'ERROR', 'time': 150.0, 'code': 500},
         ]
 
-        results = await one_time_check(sample_sites)
+        results = await one_time_check(sample_sites, timeout=custom_timeout)
         assert len(results) == 2
-        mock_check_site.assert_has_calls([call(url, ANY) for url in sample_sites])
+
+        assert mock_check_site.call_count == 2
+        for call_args in mock_check_site.call_args_list:
+            assert call_args[0][1] is not None
+            assert call_args[0][2] == custom_timeout
 
     @pytest.mark.asyncio
-    @patch('app.checker.one_time_check')
+    @patch('app.monitoring.checker.one_time_check')
     @patch('builtins.print')
     async def test_monitor_loop(self, mock_print, mock_check):
         mock_check.return_value = [{'status': 'OK'}]
-        await monitor_loop(['site.com'], 0.01, max_runs=1)
+        await monitor_loop(['site.com'], 0.01, timeout=5, max_runs=1)
         mock_print.assert_any_call("✅ 1/1 OK")
+        mock_check.assert_called_once_with(['site.com'], 5)
 
     def test_headers(self):
         assert 'User-Agent' in HEADERS

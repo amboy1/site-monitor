@@ -28,46 +28,40 @@ def load_sites(args: argparse.Namespace) -> List[str]:
     return sites
 
 
-async def check_site(url: str, session: aiohttp.ClientSession):
+async def check_site(url: str, session: aiohttp.ClientSession, timeout: float = 5):
     start_time = time.time()
     try:
         async with session.get(
                 url,
                 headers=HEADERS,
-                timeout=aiohttp.ClientTimeout(total=5)
+                timeout=aiohttp.ClientTimeout(total=timeout)
             ) as response:
             elapsed = (time.time() - start_time) * 1000
             if response.status == 200:
-                print(f"[OK {elapsed:.0f}ms] {url}")
                 return {"status": "OK", "time": elapsed, "code": 200}
             else:
-                print(f"[ERROR {response.status} {elapsed:.0f}ms] {url}")
                 return {"status": "ERROR", "time": elapsed, "code": response.status}
     except asyncio.TimeoutError:
         elapsed = (time.time() - start_time) * 1000
-        print(f"[TIMEOUT {elapsed:.0f}ms] {url}")
         return {"status": "TIMEOUT", "time": elapsed, "code": 0}
     except Exception as e:
         elapsed = (time.time() - start_time) * 1000
-        print(f"[FAIL {elapsed:.0f}ms] {url}: {type(e).__name__}")
         return {"status": "FAIL", "time": elapsed, "code": 0, "error": str(e)}
 
 
-async def one_time_check(sites: List[str]):
-    print(f"Checking {len(sites)} sites...")
+async def one_time_check(sites: List[str], timeout: float = 5):
     async with aiohttp.ClientSession() as session:
-        tasks = [asyncio.create_task(check_site(url, session)) for url in sites]
-        print("Starting parallel checks...")
+        tasks = [asyncio.create_task(check_site(url, session, timeout)) for url in sites]
         results = await asyncio.gather(*tasks)
         return results
 
 
-async def monitor_loop(sites, interval, max_runs=None):
+async def monitor_loop(sites, interval, timeout: float = 5, max_runs=None):
     run = 0
     while True:
         run += 1
         print(f"[{time.time()}] Run #{run}")
-        results = await one_time_check(sites)
+        results = await one_time_check(sites, timeout)
         ok = sum(r['status'] == 'OK' for r in results)
         print(f"✅ {ok}/{len(sites)} OK")
 
