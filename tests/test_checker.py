@@ -58,6 +58,41 @@ class TestChecker:
         mock_session.get.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_check_site_404_error(self):
+        mock_cm_get = AsyncMock()
+        mock_response = Mock()
+        mock_response.status = 404
+        mock_cm_get.__aenter__.return_value = mock_response
+        mock_cm_get.__aexit__.return_value = False
+
+        mock_session = Mock()
+        mock_session.get.return_value = mock_cm_get
+
+        result = await check_site("https://test.com/not-found", mock_session)
+
+        assert result['status'] == 'ERROR'
+        assert result['code'] == 404
+        assert 'time' in result
+
+    @pytest.mark.asyncio
+    async def test_check_site_calls_session_get_with_exact_url(self):
+        test_url = "https://custom-target.org/path?query=1"
+        mock_cm_get = AsyncMock()
+        mock_response = Mock()
+        mock_response.status = 200
+        mock_cm_get.__aenter__.return_value = mock_response
+        mock_cm_get.__aexit__.return_value = False
+
+        mock_session = Mock()
+        mock_session.get.return_value = mock_cm_get
+
+        await check_site(test_url, mock_session)
+
+        mock_session.get.assert_called_once()
+        args, kwargs = mock_session.get.call_args
+        assert args[0] == test_url
+
+    @pytest.mark.asyncio
     async def test_check_site_500_error(self):
         mock_cm_get = AsyncMock()
         mock_response = Mock()
