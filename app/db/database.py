@@ -29,6 +29,9 @@ async def test_connection():
         result = await conn.execute(text("SELECT 1"))
         print(result.scalar())
 
+async def get_db():
+    async with SessionLocal() as session:
+        yield session
 
 if __name__ == "__main__":
     asyncio.run(test_connection())

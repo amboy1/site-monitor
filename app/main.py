@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-
+from app.api.monitors import router as monitors_router
 from app.schemas.monitor import CheckRequest, CheckResponse, CheckBatchRequest
 from app.monitoring.checker import check_site
 import aiohttp
@@ -10,6 +10,8 @@ app = FastAPI(
     description="Stage 1: Asynchronous website availability checker with batch support, configurable timeouts, and parallel request execution.",
     version="0.1.0 (Stage 1)",
 )
+
+app.include_router(monitors_router)
 
 @app.get("/", summary="API root")
 def read_root():
@@ -31,3 +33,4 @@ async def check_batch(request: CheckBatchRequest):
     async with aiohttp.ClientSession() as session:
         results = await asyncio.gather(*[check_site(str(url), session, request.timeout) for url in request.urls])
     return results
+
