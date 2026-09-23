@@ -7,8 +7,11 @@ annotated-types==0.8.0
 anyio==4.15.1
 asyncpg==0.31.0
 attrs==26.1.0
+bcrypt==4.0.1
 certifi==2026.7.22
 click==8.5.0
+dnspython==2.8.0
+email_validator==2.3.0
 fastapi==0.141.1
 frozenlist==1.8.0
 greenlet==3.5.6
@@ -21,6 +24,7 @@ Mako==1.4.1
 MarkupSafe==3.0.3
 multidict==6.9.0
 packaging==26.3
+passlib==1.7.4
 pluggy==1.6.0
 propcache==0.5.4
 pydantic==2.13.5

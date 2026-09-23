@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from app.api.monitors import router as monitors_router
+from app.api.users import router as users_router
+from app.api.auth import router as auth_router
 from app.schemas.monitor import CheckRequest, CheckResponse, CheckBatchRequest
 from app.monitoring.checker import check_site
 import aiohttp
@@ -12,6 +14,8 @@ app = FastAPI(
 )
 
 app.include_router(monitors_router)
+app.include_router(users_router)
+app.include_router(auth_router)
 
 @app.get("/", summary="API root")
 def read_root():

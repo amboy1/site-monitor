@@ -1,7 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.db.models import Monitor
+from app.core.security import get_password_hash
+from app.db.models import Monitor, User
 from app.schemas.monitor import MonitorCreate
+from app.schemas.user import UserCreate
 
 async def create_monitor(db: AsyncSession, monitor_input: MonitorCreate):
     db_monitor = Monitor(
@@ -33,3 +35,19 @@ async def delete_monitor(db: AsyncSession, monitor_id: int):
     await db.delete(monitor)
     await db.commit()
     return monitor
+
+
+async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
+    result = await db.execute(select(User).where(User.email == email))
+    return result.scalar_one_or_none()
+
+
+async def create_user(db: AsyncSession, user_in: UserCreate) -> User:
+    db_user = User(
+        email=user_in.email,
+        hashed_password=get_password_hash(user_in.password),
+    )
+    db.add(db_user)
+    await db.commit()
+    await db.refresh(db_user)
+    return db_user
