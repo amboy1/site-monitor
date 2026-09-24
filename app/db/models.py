@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Boolean, DateTime, Float, Integer, String
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
@@ -18,6 +18,7 @@ class Monitor(Base):
         DateTime,
         default=datetime.utcnow
     )
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
 
 class User(Base):
     __tablename__ = "users"

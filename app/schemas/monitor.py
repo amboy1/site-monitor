@@ -32,3 +32,5 @@ class MonitorResponse(BaseModel):
     interval: int
     is_active: bool
     created_at: datetime
+    user_id: int
+    

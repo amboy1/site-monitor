@@ -5,31 +5,37 @@ from app.db.models import Monitor, User
 from app.schemas.monitor import MonitorCreate
 from app.schemas.user import UserCreate
 
-async def create_monitor(db: AsyncSession, monitor_input: MonitorCreate):
+async def create_monitor(db: AsyncSession, monitor_input: MonitorCreate, user_id: int = 1):
     db_monitor = Monitor(
         name=monitor_input.name,
         url=str(monitor_input.url),
         timeout=monitor_input.timeout,
         interval=monitor_input.interval,
         is_active=monitor_input.is_active,
+        user_id=user_id,
     )
     db.add(db_monitor)
     await db.commit()
     await db.refresh(db_monitor)
     return db_monitor
 
-async def get_monitors(db: AsyncSession, skip: int = 0, limit: int = 100):
-    stmt = select(Monitor).offset(skip).limit(limit)
+async def get_monitors(db: AsyncSession, user_id: int | None = None, skip: int = 0, limit: int = 100):
+    stmt = select(Monitor)
+    if user_id is not None:
+        stmt = stmt.where(Monitor.user_id == user_id)
+    stmt = stmt.offset(skip).limit(limit)
     result = await db.execute(stmt)
     return result.scalars().all()
 
-async def get_monitor_by_id(db: AsyncSession, monitor_id: int):
+async def get_monitor_by_id(db: AsyncSession, monitor_id: int, user_id: int | None = None):
     stmt = select(Monitor).where(Monitor.id == monitor_id)
+    if user_id is not None:
+        stmt = stmt.where(Monitor.user_id == user_id)
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
 
-async def delete_monitor(db: AsyncSession, monitor_id: int):
-    monitor = await get_monitor_by_id(db=db, monitor_id=monitor_id)
+async def delete_monitor(db: AsyncSession, monitor_id: int, user_id: int | None = None):
+    monitor = await get_monitor_by_id(db=db, monitor_id=monitor_id, user_id=user_id)
     if not monitor:
         return None
     await db.delete(monitor)

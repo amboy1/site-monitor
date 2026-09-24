@@ -12,18 +12,18 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-# def decode_access_token(token: str) -> dict:
-#     """
-#     Декодирует токен и возвращает его содержимое (payload).
+def decode_access_token(token: str) -> dict:
+    """
+    Декодирует токен и возвращает его содержимое (payload).
     
-#     Примеры ошибок:
-#     - token_expired_error
-#     - invalid_credentials_error
-#     """
-#     try:
-#         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-#         return payload
-#     except jwt.ExpiredSignatureError:
-#         raise TokenExpiredError()
-#     except jwt.InvalidTokenError:
-#         raise InvalidCredentialsError()
+    Может выбрасывать:
+    - jwt.ExpiredSignatureError: если срок действия токена истек
+    - jwt.InvalidTokenError: если токен невалиден
+    """
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise
+    except jwt.InvalidTokenError:
+        raise
