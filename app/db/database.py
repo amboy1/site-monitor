@@ -9,7 +9,12 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import DeclarativeBase
 
 
-DATABASE_URL = "postgresql+asyncpg://postgres:MonitorPass123@localhost:5433/async_monitor"
+import os
+
+DATABASE_URL = os.getenv(
+    "DATABASE_URL", 
+    "postgresql+asyncpg://postgres:MonitorPass123@localhost:5433/async_monitor"
+)
 
 engine = create_async_engine(DATABASE_URL)
 
