@@ -1,4 +1,0 @@
-google.com
-yandex.ru
-github.com
-https://httpbin.org

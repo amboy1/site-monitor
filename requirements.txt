@@ -39,3 +39,5 @@ typing-inspection==0.4.4
 typing_extensions==4.16.0
 uvicorn==0.53.0
 yarl==1.25.1
+PyJWT==2.8.0
+python-multipart==0.0.9
