@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
-from app.schemas.monitor import MonitorResponse, MonitorCreate
+from app.schemas.monitor import MonitorResponse, MonitorCreate, MonitorCheckResponse
+from sqlalchemy import select
+from app.db.models import MonitorCheck
 from app.db.crud import create_monitor, get_monitors, get_monitor_by_id, delete_monitor
 from app.core.dependencies import get_current_user
 from app.db.models import User
@@ -35,3 +37,23 @@ async def remove_monitor(monitor_id: int, db: AsyncSession = Depends(get_db), cu
     if not monitor:
         raise HTTPException(status_code=404, detail="Monitor not found")
     return {"message": "Monitor successfully deleted", "id": monitor_id}
+
+@router.get("/{monitor_id}/history", response_model=list[MonitorCheckResponse], summary="Get check history for a monitor")
+async def get_monitor_history(
+    monitor_id: int, 
+    limit: int = 100, 
+    db: AsyncSession = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    # First check if the monitor exists and belongs to the user
+    monitor = await get_monitor_by_id(db=db, monitor_id=monitor_id, user_id=current_user.id)
+    if not monitor:
+        raise HTTPException(status_code=404, detail="Monitor not found")
+        
+    result = await db.execute(
+        select(MonitorCheck)
+        .where(MonitorCheck.monitor_id == monitor_id)
+        .order_by(MonitorCheck.checked_at.desc())
+        .limit(limit)
+    )
+    return result.scalars().all()

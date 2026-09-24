@@ -1,16 +1,31 @@
 from fastapi import FastAPI
+import aiohttp
+import asyncio
+from contextlib import asynccontextmanager
 from app.api.monitors import router as monitors_router
 from app.api.users import router as users_router
 from app.api.auth import router as auth_router
 from app.schemas.monitor import CheckRequest, CheckResponse, CheckBatchRequest
 from app.monitoring.checker import check_site
-import aiohttp
-import asyncio
+from app.services.worker import start_monitoring_loop
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Background monitoring worker starting...")
+    task = asyncio.create_task(start_monitoring_loop())
+    print("Background monitoring worker started!")
+    try:
+        yield
+    finally:
+        print("Background monitoring worker stopping...")
+        task.cancel()
+        print("Background monitoring worker stopped!")
 
 app = FastAPI(
     title="Async Site Monitor API",
     description="Stage 1: Asynchronous website availability checker with batch support, configurable timeouts, and parallel request execution.",
     version="0.1.0 (Stage 1)",
+    lifespan=lifespan,
 )
 
 app.include_router(monitors_router)
