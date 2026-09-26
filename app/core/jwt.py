@@ -1,9 +1,11 @@
 from datetime import datetime, timedelta, timezone
 import jwt
 
-SECRET_KEY = "SUPER_SECRET_KEY_CHANGE_ME_LATER"  # В реальном проекте вынесем в .env
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+from app.core.config import settings
+
+SECRET_KEY = settings.SECRET_KEY
+ALGORITHM = settings.JWT_ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()
